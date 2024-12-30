@@ -25,22 +25,21 @@ class TranslationJob:
         self.error_probability = error_probability
 
     def get_status(self) -> JobStatus:
-        # Randomly causing an error if inside error threshold
-        error = random.random()
-        # logger.info(f"Error: {error}, Threshold:{self.error_probability}")
-        if error < self.error_probability:
-            logger.info(f"Job status returned: {JobStatus.ERROR}")
-            return JobStatus.ERROR
-
         # Comparing the processing time to the actual time worked
         time_worked = time.time() - self.start_time
         # logger.info(f"Time Worked: {time_worked}, Processing Time: {self.processing_time}")
         if time_worked >= self.processing_time:
             logger.info(f"Job status returned: {JobStatus.COMPLETED}")
             return JobStatus.COMPLETED
-        else:
-            logger.info(f"Job status returned: {JobStatus.PENDING}")
-            return JobStatus.PENDING
+
+        # Randomly causing an error if inside error threshold
+        error = random.random()
+        # logger.info(f"Error: {error}, Threshold:{self.error_probability}")
+        if error < self.error_probability:
+            logger.info(f"Job status returned: {JobStatus.ERROR}")
+            return JobStatus.ERROR
+        # If not completed or errored, return pending
+        return JobStatus.PENDING
 
 
 class TranslationServer:
