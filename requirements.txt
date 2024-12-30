@@ -2,3 +2,4 @@ fastapi
 uvicorn
 pre-commit
 ruff
+pydantic
