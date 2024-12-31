@@ -41,4 +41,4 @@ If, for whatever reason, you'd like to contribute, first install the pre-commit 
 ```
 pre-commit install
 ```
-This allows for code linting and formatting at every ```git commit```, ensuring readibility and consistency. Then open an issue and submit a PR. 
+This allows for code linting and formatting using ```ruff``` at every ```git commit```, ensuring readibility and consistency. Then open an issue and submit a PR. 
