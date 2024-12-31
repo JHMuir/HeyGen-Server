@@ -27,11 +27,11 @@ class TranslationAPI:
     ) -> JobID:
         if processing_time <= 0:
             raise HTTPException(
-                status_code=400, message="Processing time must be positive"
+                status_code=400, detail="Processing time must be positive"
             )
         if not 0 <= error_probability <= 1:
             raise HTTPException(
-                status_code=400, message="Error probability must be between 0 and 1"
+                status_code=400, detail="Error probability must be between 0 and 1"
             )
 
         job_id = self.translation_server.create_job(

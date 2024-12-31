@@ -61,6 +61,25 @@ class TranslationClient:
             delay = min(delay * self.config.backoff_factor, self.config.max_retry_delay)
             attempt += 1
 
+    def wait_for_completion_with_interval(
+        self,
+        job_id: str,
+        interval: float,
+        callback: Optional[Callable[[TranslationStatus], Any]] = None,
+    ) -> TranslationStatus:
+        if interval <= 0:
+            raise ValueError("Interval must be greater than 0")
+
+        while True:
+            status = self.get_status(job_id)
+            if callback:
+                callback(status)
+
+            if status != TranslationStatus.PENDING:
+                return status
+
+            time.sleep(interval)
+
     def _check_circuit_breaker(self):
         """Check if circuit breaker is tripped and if it can be reset"""
         if self._circuit_broken_time is None:
