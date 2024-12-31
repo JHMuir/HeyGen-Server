@@ -3,3 +3,4 @@ uvicorn
 pre-commit
 ruff
 pydantic
+httpx

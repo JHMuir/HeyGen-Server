@@ -8,8 +8,8 @@ class JobID(BaseModel):
     job_id: str
 
 
-class JobResponse(BaseModel):
-    response: str
+class JobResult(BaseModel):
+    result: str
 
 
 class TranslationAPI:
@@ -39,11 +39,11 @@ class TranslationAPI:
         )
         return JobID(job_id=job_id)
 
-    async def get_translation_status(self, job_id: str) -> JobResponse:
+    async def get_translation_status(self, job_id: str) -> JobResult:
         status = self.translation_server.get_job_status(job_id)
         if status is None:
             raise HTTPException(status_code=404, detail="Job Not Found")
-        return JobResponse(response=status.value)
+        return JobResult(result=status.value)
 
     def run(self, host: str = "0.0.0.0", port: int = 8000):
         uvicorn.run(self.app, host=host, port=port)

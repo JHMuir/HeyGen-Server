@@ -46,6 +46,7 @@ class TranslationServer:
     def __init__(self):
         # dictionary of {str(uuid):TranslationJob}
         self.jobs: Dict[str, TranslationJob] = {}
+        self.logger = logging.getLogger(__name__)
 
     def create_job(self, processing_time: float, error_probability: float = 0.1) -> str:
         # Updating our jobs dictionary with a new job
