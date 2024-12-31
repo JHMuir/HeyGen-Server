@@ -1,5 +1,5 @@
-from .data import TranslationConfig, TranslationStatus, CircuitBreakerError
 from typing import Optional, Callable, Any
+from enum import Enum
 import httpx
 import logging
 import time
@@ -9,20 +9,47 @@ logging.basicConfig(
 )
 
 
+class TranslationStatus(Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    ERROR = "error"
+
+
+class CircuitBreakerError(Exception):
+    pass
+
+
 class TranslationClient:
-    def __init__(self, config: Optional[TranslationConfig] = None):
-        self.config = config or TranslationConfig()
+    def __init__(
+        self,
+        base_url: str = "http://localhost:8000",
+        initial_retry_delay: float = 1.0,
+        max_retry_delay: float = 60.0,
+        backoff_factor: float = 2.0,
+        max_retries: int = 10,
+        timeout: float = 5.0,
+        circuit_breaker_threshold: int = 5,
+        circuit_breaker_timeout: float = 60.0,
+    ):
+        self.base_url = base_url
+        self.initial_retry_delay = initial_retry_delay
+        self.max_retry_delay = max_retry_delay
+        self.backoff_factor = backoff_factor
+        self.max_retries = max_retries
+        self.timeout = timeout
+        self.circuit_breaker_threshold = circuit_breaker_threshold
+        self.circuit_breaker_timeout = circuit_breaker_timeout
+        self.logger = logging.getLogger(__name__)
         self._consecutive_failures = 0
         self._circuit_broken_time: Optional[float] = None
-        self._http_client = httpx.Client(timeout=self.config.timeout)
-        self.logger = logging.getLogger(__name__)
+        self._http_client = httpx.Client(timeout=self.timeout)
 
     def create_job(self, processing_time: float = 30.0, error_probability: float = 0.1):
         self._check_circuit_breaker()
 
         try:
             response = self._http_client.post(
-                f"{self.config.base_url}/jobs",
+                f"{self.base_url}/jobs",
                 params={
                     "processing_time": processing_time,
                     "error_probability": error_probability,
@@ -36,7 +63,7 @@ class TranslationClient:
 
     def get_status(self, job_id: str):
         try:
-            response = self._http_client.get(f"{self.config.base_url}/status/{job_id}")
+            response = self._http_client.get(f"{self.base_url}/status/{job_id}")
             response.raise_for_status()
             self._consecutive_failures = 0  # Reset on success
             return TranslationStatus(response.json()["result"])
@@ -46,7 +73,7 @@ class TranslationClient:
     def wait_for_completion(
         self, job_id: str, callback: Optional[Callable[[TranslationStatus], Any]] = None
     ) -> TranslationStatus:
-        delay = self.config.initial_retry_delay
+        delay = self.initial_retry_delay
         attempt = 0
 
         while True:
@@ -58,7 +85,7 @@ class TranslationClient:
                 return status
 
             time.sleep(delay)
-            delay = min(delay * self.config.backoff_factor, self.config.max_retry_delay)
+            delay = min(delay * self.backoff_factor, self.max_retry_delay)
             attempt += 1
 
     def wait_for_completion_with_interval(
@@ -85,10 +112,7 @@ class TranslationClient:
         if self._circuit_broken_time is None:
             return
 
-        if (
-            time.time() - self._circuit_broken_time
-            >= self.config.circuit_breaker_timeout
-        ):
+        if time.time() - self._circuit_broken_time >= self.circuit_breaker_timeout:
             self.logger.info("Resetting circuit breaker")
             self._consecutive_failures = 0
             self._circuit_broken_time = None
@@ -99,14 +123,14 @@ class TranslationClient:
     def _handle_request_error(self, e: Exception):
         """Handle request errors and manage circuit breaker state"""
         self._consecutive_failures += 1
-        if self._consecutive_failures >= self.config.circuit_breaker_threshold:
+        if self._consecutive_failures >= self.circuit_breaker_threshold:
             self._circuit_broken_time = time.time()
             raise CircuitBreakerError("Circuit breaker tripped") from e
         raise e
 
     def _should_retry(self, status: TranslationStatus, attempt: int) -> bool:
         """Determine if we should retry based on status and attempt count"""
-        if attempt >= self.config.max_retries:
+        if attempt >= self.max_retries:
             return False
         return status == TranslationStatus.PENDING
 
