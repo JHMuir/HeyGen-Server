@@ -50,6 +50,7 @@ class TranslationClient:
             circuit_breaker_threshold (int, optional): Number of failures before circuit breaks. Defaults to 5.
             circuit_breaker_timeout (float, optional): Time to wait before resetting circuit, in seconds. Defaults to 60.0.
         """
+        # Public Members
         self.base_url = base_url
         self.initial_retry_delay = initial_retry_delay
         self.max_retry_delay = max_retry_delay
@@ -58,7 +59,8 @@ class TranslationClient:
         self.timeout = timeout
         self.circuit_breaker_threshold = circuit_breaker_threshold
         self.circuit_breaker_timeout = circuit_breaker_timeout
-        self.logger = logging.getLogger(__name__)
+        # Private Members
+        self._logger = logging.getLogger(__name__)
         self._consecutive_failures = 0
         self._circuit_broken_time: Optional[float] = None
         self._http_client = httpx.Client(timeout=self.timeout)
@@ -81,6 +83,7 @@ class TranslationClient:
         self._check_circuit_breaker()
 
         try:
+            # Posting a job at the server endpoint
             response = self._http_client.post(
                 f"{self.base_url}/jobs",
                 params={
@@ -109,6 +112,7 @@ class TranslationClient:
             TranslationStatus (Enum): COMPLETED or ERROR or PENDING
         """
         try:
+            # Retrieving current status of the job
             response = self._http_client.get(f"{self.base_url}/status/{job_id}")
             response.raise_for_status()
             self._consecutive_failures = 0  # Reset on success
@@ -137,6 +141,7 @@ class TranslationClient:
         attempt = 0
 
         while True:
+            # Continually checks for job status, until COMPLETED or ERROR
             status = self.get_status(job_id)
             if callback:
                 callback(status)
@@ -144,6 +149,7 @@ class TranslationClient:
             if not self._should_retry(status, attempt):
                 return status
 
+            # If job status returns PENDING, we keep increasing the delay between checks, lessening the server load
             time.sleep(delay)
             delay = min(delay * self.backoff_factor, self.max_retry_delay)
             attempt += 1
@@ -174,6 +180,7 @@ class TranslationClient:
             raise ValueError("Interval must be greater than 0")
 
         while True:
+            # Continually checks for job status, until COMPLETED or ERROR
             status = self.get_status(job_id)
             if callback:
                 callback(status)
@@ -181,6 +188,8 @@ class TranslationClient:
             if status != TranslationStatus.PENDING:
                 return status
 
+            # Delays a set interval of time
+            # NOTE: In a production environment, there should probably be a minimum cap to prevent users from checking every second
             time.sleep(interval)
 
     def _check_circuit_breaker(self):
@@ -193,12 +202,13 @@ class TranslationClient:
         if self._circuit_broken_time is None:
             return
 
+        # Checking the circuit breaker, and resetting it if the timeout has elapsed
         if time.time() - self._circuit_broken_time >= self.circuit_breaker_timeout:
-            self.logger.info("Resetting circuit breaker")
+            self._logger.info("Resetting circuit breaker")
             self._consecutive_failures = 0
             self._circuit_broken_time = None
             return
-
+        # Return an error if the timeout has not elapsed
         raise CircuitBreakerError("Circuit breaker is open")
 
     def _handle_request_error(self, e: Exception):
@@ -212,6 +222,7 @@ class TranslationClient:
             CircuitBreakerError: If circuit breaker is open
             e: Exception that occured
         """
+        # Checks for failure count, if above threshold, opens the circuit breaker
         self._consecutive_failures += 1
         if self._consecutive_failures >= self.circuit_breaker_threshold:
             self._circuit_broken_time = time.time()

@@ -48,6 +48,7 @@ class TranslationAPI:
         Returns:
             JobID: Pydantic model that contains the generated uuid4 string
         """
+        # Checking given parameters
         if processing_time <= 0:
             raise HTTPException(
                 status_code=400, detail="Processing time must be positive"
@@ -57,6 +58,7 @@ class TranslationAPI:
                 status_code=400, detail="Error probability must be between 0 and 1"
             )
 
+        # creating a job at the server endpoint
         job_id = self.translation_server.create_job(
             processing_time=processing_time, error_probability=error_probability
         )

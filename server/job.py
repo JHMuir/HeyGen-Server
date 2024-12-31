@@ -49,9 +49,9 @@ class TranslationJob:
             self.logger.info(f"Job status returned: {JobStatus.COMPLETED}")
             return JobStatus.COMPLETED
 
-        # Randomly causing an error if inside error threshold
+        # Randomly causing an error if inside error probability
         error = random.random()
-        # logger.info(f"Error: {error}, Threshold:{self.error_probability}")
+        # logger.info(f"Error: {error}, Probability:{self.error_probability}")
         if error < self.error_probability:
             self.logger.info(f"Job status returned: {JobStatus.ERROR}")
             return JobStatus.ERROR
