@@ -17,7 +17,18 @@ class JobStatus(Enum):
 
 
 class TranslationJob:
-    def __init__(self, processing_time: float, error_probability: float = 0.1):
+    """
+    Basic job object
+    """
+
+    def __init__(self, processing_time: float, error_probability: float):
+        """
+        Initialization of TranslationJob
+
+        Args:
+            processing_time (float): Expected processing time, in seconds.
+            error_probability (float, optional): Probability of job failing.
+        """
         self.job_id = str(uuid.uuid4())
         self.start_time = time.time()
         self.processing_time = processing_time
@@ -25,6 +36,12 @@ class TranslationJob:
         self.logger = logging.getLogger(__name__)
 
     def get_status(self) -> JobStatus:
+        """
+        Retrieves current status of the job
+
+        Returns:
+            JobStatus (Enum): COMPLETED or PENDING or ERROR
+        """
         # Comparing the processing time to the actual time worked
         time_worked = time.time() - self.start_time
         # logger.info(f"Time Worked: {time_worked}, Processing Time: {self.processing_time}")
@@ -43,12 +60,29 @@ class TranslationJob:
 
 
 class TranslationServer:
+    """
+    Backend archtecture that handles multiple TranslationJobs
+    """
+
     def __init__(self):
+        """
+        Initialization of TranslationServer
+        """
         # dictionary of {str(uuid):TranslationJob}
         self.jobs: Dict[str, TranslationJob] = {}
         self.logger = logging.getLogger(__name__)
 
-    def create_job(self, processing_time: float, error_probability: float = 0.1) -> str:
+    def create_job(self, processing_time: float, error_probability: float) -> str:
+        """
+        Creates a new job
+
+        Args:
+            processing_time (float): Expected processing time, in seconds.
+            error_probability (float, optional): Probability of job failing.
+
+        Returns:
+            job.job_id (str): Returns uuid4 string of created TranslationJob
+        """
         # Updating our jobs dictionary with a new job
         job = TranslationJob(processing_time, error_probability)
         self.jobs[job.job_id] = job
@@ -56,6 +90,15 @@ class TranslationServer:
         return job.job_id
 
     def get_job_status(self, job_id: str) -> Optional[JobStatus]:
+        """
+        Retrieves job status
+
+        Args:
+            job_id (str): uuid4 string
+
+        Returns:
+            Optional[JobStatus]: Returns COMPLETED or PENDING or ERROR, or None if job is not found
+        """
         # Grabbing passed job's status
         job = self.jobs.get(job_id)
         if job is None:
